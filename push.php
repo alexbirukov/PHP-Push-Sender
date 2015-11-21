@@ -92,7 +92,8 @@
 	#
 	function SendPush ($message, $config) {
 
-		$text = htmlspecialchars($message);
+		# Убираем обратные слэши
+		$text = stripcslashes($message);
 		
 		# Создаём подключение к БД
 		$db = mysql_connect($config['db']['host'], $config['db']['user'], $config['db']['pass']) or die("Ошибка подключения к БД!");
