@@ -26,6 +26,9 @@
 				break;		
 			case 'send-push':
 				SendPush($_REQUEST['text'], $config);
+				break;			
+			case 'get-push-xml':
+				get_push_to_xml($config);
 				break;	
 		}
 	}
@@ -150,6 +153,14 @@
 				# Отправка токенов на iOS устройства
 				SendIOS($ios_tokens, $text, $config);
 			}
+		}
+		
+		###########################################################################
+		# ЗАПИСЬ СООБЩЕНИЯ В БД
+		# Проверяем, включено ли логгирование  сообщений в БД
+		if ($config['log']['push']) {
+			// Записываем сообщение в БД
+			MessageToDB($text);
 		}
 	}
 	
@@ -297,4 +308,81 @@
 		
 	}
 	
+	###########################################################################
+	# ФУНКЦИЯ ЗАПИСИ PUSH СООБЩЕНИЯ В БД
+	# 
+	# string $message - текст push сообщения.
+	#
+	function MessageToDB($message) {
+		
+		# Глобальные переменные
+		global $config;
+		
+		$tmp_db = mysql_connect($config['db']['host'], $config['db']['user'], $config['db']['pass']) or die("Ошибка подключения к БД!");
+
+		mysql_select_db($config['db']['name'], $tmp_db);
+		mysql_query("SET NAMES `utf8`");   
+		mysql_query("set character_set_client='utf8'");    
+		mysql_query("set character_set_results='utf8'");    
+		mysql_query("set collation_connection='utf8'"); 
+				
+		# Записываем сообщение в БД
+		mysql_query("INSERT INTO messages (ID, DateTime, MessageText) VALUES (DEFAULT, NOW(), '$message')", $tmp_db);
+		
+	}
+
+	###########################################################################
+	# ФУНКЦИЯ ВЫВОДА ПОСЛЕДНИХ PUSH СООБЩЕНИЙ В ФОРМАТЕ XML
+	#
+	function get_push_to_xml($config) {
+		
+		# Создаём подключение к БД
+		$db = mysql_connect($config['db']['host'], $config['db']['user'], $config['db']['pass']) or die("Ошибка подключения к БД!");
+
+		mysql_select_db($config['db']['name'], $db);
+		mysql_query("SET NAMES `utf8`");   
+		mysql_query("set character_set_client='utf8'");    
+		mysql_query("set character_set_results='utf8'");    
+		mysql_query("set collation_connection='utf8'"); 
+		
+		# Выполняем запрос к БД
+		$sql = mysql_query("
+			SELECT ID, MessageText
+			FROM messages
+			ORDER BY DateTime DESC
+			LIMIT 3"
+		, $db);
+		
+		# Создаём новый XML документ
+		$dom = new DOMDocument('1.0', 'utf-8');
+		
+		# Создаём корневой элемент сообщений
+		$messages = $dom->createElement('messages');
+
+		# Перебираем список треков из БД
+		while ($row = mysql_fetch_assoc($sql)) {
+
+			# Создаём элемент message
+			$message = $dom->createElement('message');
+			
+			# Создаём элемент ID
+			$id = $dom->createElement('id');
+			$id->appendChild($dom->createTextNode($row['ID']));
+			$message->appendChild($id);
+			
+			# Создаём элемент text
+			$text = $dom->createElement('text');
+			$text->appendChild($dom->createTextNode($row['MessageText']));
+			$message->appendChild($text);
+			
+			# Выводим маркер в общий список
+			$messages->appendChild($message);
+
+		}
+		
+		// Добавляем элемент markers в структуру документа 
+		$dom->appendChild($messages);
+		// Выводим XML документ
+		echo $dom->saveXML();
+	}
 ?>

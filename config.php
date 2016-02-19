@@ -6,6 +6,11 @@
 	$config['db']['user'] = "Пользователь БД";
 	$config['db']['pass'] = "Пароль БД";
 	
+	# Логгирование Push сообщений в БД
+	$config['log']['push'] = true;
+	# Лимит вывода Push сообщений
+	$config['log']['limit'] = 3;
+	
 	# Управление рассылкой. True - рассылка производится, false - рассылка отключена.
 	$config['apn']['send'] = true;
 	$config['gcm']['send'] = true;
