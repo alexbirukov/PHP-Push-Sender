@@ -125,8 +125,11 @@
 					$andr_tokens[] = $row[0];
 				}
 				
-				# Отправка токенов на Android устройства	
-				SendAndroid($andr_tokens, $text, $config);
+				# Так как у GCM стоит лимит в 1000 за раз, делим
+            			$chunks = array_chunk($andr_tokens,1000);
+				
+				# Отправка токенов на Android устройства
+				foreach( $chunks AS $chunk ) SendAndroid($chunk, $text, $config);
 			}
 		}
 		
