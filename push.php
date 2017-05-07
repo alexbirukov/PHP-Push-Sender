@@ -1,29 +1,41 @@
 <?php
-	###########################################################################
-	# Подключаем файлы из бибилотеки для отправки Push сообщений на Android
-	###########################################################################
+
+    /**
+     * Файл: push.php
+     * Автор: Бирюков Александр
+     * Описание: Скрипт рассылки PUSH уведомлений.
+     */
+
+    //=========================================================================================================
+
+    /**
+     * Подключаем файлы из бибилотеки для отправки Push сообщений на Android
+     */
 	require_once(dirname(__FILE__).'/CodeMonkeysRu/GCM/Exception.php');
 	require_once(dirname(__FILE__).'/CodeMonkeysRu/GCM/Message.php');
 	require_once(dirname(__FILE__).'/CodeMonkeysRu/GCM/Response.php');
 	require_once(dirname(__FILE__).'/CodeMonkeysRu/GCM/Sender.php');
-	
-	###########################################################################
-	# Подключаем автозагрузчик от ApnsPHP
-	###########################################################################
+
+    /**
+     * Подключаем автозагрузчик от ApnsPHP
+     */
 	require_once 'ApnsPHP/Autoload.php';
-	
-	###########################################################################
-	# Подключаем файл конфигурации
-	###########################################################################
+
+    /**
+     * Подключаем файл конфигурации
+     */
 	require_once 'config.php';
-	
-	# Проверяем, указано ли действие при запуске скрипта
+
+	//=========================================================================================================
+	/**
+	 * Проверяем, указано ли действие при запуске скрипта
+	 */
 	if (isset($_REQUEST['action'])) {
 		
 		switch ($_REQUEST['action']) {
 			case 'register-device':
 				RegisterDevice($_REQUEST['did'], $_REQUEST['token'], $_REQUEST['platform'], $config);
-				break;		
+				break;
 			case 'send-push':
 				SendPush($_REQUEST['text'], $config);
 				break;			
@@ -37,19 +49,17 @@
 		# Если никакого действия не задано выводим ошибку
 		echo 'Ошибка обработки данных!';
 	}
-	
-	###########################################################################
-	# ФУНКЦИЯ РЕГИСТРАЦИИ УСТРОЙСТВА В БД
-	# 
-	# string $deviceID - идентификатор устройства
-	# string $token - токен устройства для отправки push сообщений
-	# string $platform - платформа устройства
-	# array $config - массив параметров конфигурации: см. файл config.php
-	#
+    //=========================================================================================================
+
+    /**
+     * ФУНКЦИЯ РЕГИСТРАЦИИ УСТРОЙСТВА В БД
+     *
+     * @param string $deviceID - идентификатор устройства
+     * @param string $token - токен устройства для отправки push сообщений
+     * @param string $platform - платформа устройства
+     * @param array $config - массив параметров конфигурации: см. файл config.php
+     */
 	function RegisterDevice($deviceID, $token, $platform, $config) {
-		
-		# Включение или отключение вывода лога
-		$logging = true;
 		
 		# Получаем данные от пользователя
 		# Идентификатор устройства
@@ -58,76 +68,66 @@
 		$token = htmlspecialchars($token);
 		# Платформа
 		$platform = htmlspecialchars($platform);
-		
-		if ($logging) {
-
-			$message['deviceID'] = $deviceID;
-			$message['token'] = $token;
-			$message['platform'] = $platform;
-			
-		}
 
 		# Создаём подключение к БД
-		$db = mysql_connect($config['db']['host'], $config['db']['user'], $config['db']['pass']) or die("Ошибка подключения к БД!");
+		$db = mysqli_connect($config['db']['host'], $config['db']['user'], $config['db']['pass'], $config['db']['name']) or die("Ошибка подключения к БД!");
 
-		mysql_select_db($config['db']['name'], $db);
-		mysql_query("SET NAMES `utf8`");   
-		mysql_query("set character_set_client='utf8'");    
-		mysql_query("set character_set_results='utf8'");    
-		mysql_query("set collation_connection='utf8'");  
+		mysqli_query($db, "SET NAMES `utf8`");   
+		mysqli_query($db, "set character_set_client='utf8'");    
+		mysqli_query($db, "set character_set_results='utf8'");    
+		mysqli_query($db, "set collation_connection='utf8'");  
 		
 		# Проверяем количество записей в БД
-		$result = mysql_query("SELECT COUNT(*) AS count FROM devices WHERE deviceID = '$deviceID' AND deviceToken = '$token'", $db);
-		$row = mysql_fetch_assoc($result);
+		$result = mysqli_query($db, "SELECT COUNT(*) AS count FROM devices WHERE deviceID = '$deviceID' AND deviceToken = '$token'");
+		$row = mysqli_fetch_assoc($result);
 
 		# Если записи с указанным ID  и токеном нет в базе, записываем
 		if ($row['count'] == 0) {
-			$res = mysql_query("INSERT INTO devices (id, deviceID, deviceToken, devicePlatform) VALUES (DEFAULT, '$deviceID', '$token', '$platform')", $db);
+			$res = mysqli_query($db, "INSERT INTO devices (id, deviceID, deviceToken, devicePlatform) VALUES (DEFAULT, '$deviceID', '$token', '$platform')");
 		}
 	
 	}
-	
-	###########################################################################
-	# ФУНКЦИЯ ОТПРАВКИ PUSH СООБЩЕНИЙ НА ВСЕ УСТРОЙСТВА
-	# 
-	# string $message - текст сообщения для отправки
-	# array $config - массив параметров конфигурации: см. файл config.php
-	#
+
+    /**
+     * ФУНКЦИЯ ОТПРАВКИ PUSH СООБЩЕНИЙ НА ВСЕ УСТРОЙСТВА
+     *
+     * @param string $message - текст сообщения для отправки
+     * @param array $config - массив параметров конфигурации: см. файл config.php
+     */
 	function SendPush ($message, $config) {
 
 		# Убираем обратные слэши
 		$text = stripcslashes($message);
 		
 		# Создаём подключение к БД
-		$db = mysql_connect($config['db']['host'], $config['db']['user'], $config['db']['pass']) or die("Ошибка подключения к БД!");
+		$db = mysqli_connect($config['db']['host'], $config['db']['user'], $config['db']['pass'], $config['db']['name']) or die("Ошибка подключения к БД!");
 
-		mysql_select_db($config['db']['name'], $db);
-		mysql_query("SET NAMES `utf8`");   
-		mysql_query("set character_set_client='utf8'");    
-		mysql_query("set character_set_results='utf8'");    
-		mysql_query("set collation_connection='utf8'"); 
+		mysqli_query($db, "SET NAMES `utf8`");   
+		mysqli_query($db, "set character_set_client='utf8'");    
+		mysqli_query($db, "set character_set_results='utf8'");    
+		mysqli_query($db, "set collation_connection='utf8'"); 
 		
 		###########################################################################
 		# ОТПРАВКА СООБЩЕНИЙ НА ANDROID
 		# Проверяем, включена ли рассылка
 		if ($config['gcm']['send']) {
 			# Выборка токенов
-			$result = mysql_query("SELECT deviceToken FROM devices WHERE devices.devicePlatform = 'android'", $db);
+			$result = mysqli_query($db, "SELECT deviceToken FROM devices WHERE devices.devicePlatform = 'android'");
 			# Проверяем количество токенов
-			$rows_count = mysql_num_rows($result);
+			$rows_count = mysqli_num_rows($result);
 				
 			# Отправка сообщений если в БД имеются токены
 			if ($rows_count > 0) {
 				# Получение токенов устройств
 				$andr_tokens = array();
 				
-				while ($row = mysql_fetch_array($result, MYSQL_NUM)) {
+				while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
 					$andr_tokens[] = $row[0];
 				}
-				
+
 				# Так как у GCM стоит лимит в 1000 за раз, делим
-            			$chunks = array_chunk($andr_tokens,1000);
-				
+				$chunks = array_chunk($andr_tokens,1000);
+
 				# Отправка токенов на Android устройства
 				foreach( $chunks AS $chunk ) SendAndroid($chunk, $text, $config);
 			}
@@ -139,20 +139,20 @@
 		# Проверяем, включена ли рассылка
 		if ($config['apn']['send']) {
 			# Выборка токенов
-			$result = mysql_query("SELECT deviceToken FROM devices WHERE devices.devicePlatform = 'ios'", $db);
+			$result = mysqli_query($db, "SELECT deviceToken FROM devices WHERE devices.devicePlatform = 'ios'");
 
 			# Проверяем количество токенов
-			$rows_count = mysql_num_rows($result);
+			$rows_count = mysqli_num_rows($result);
 			
 			# Отправка сообщений если в БД имеются токены
 			if ($rows_count > 0) {
 				# Получение токенов устройств
 				$ios_tokens = array();
 				
-				while ($row = mysql_fetch_array($result, MYSQL_NUM)) {
+				while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
 					$ios_tokens[] = $row[0];
 				}
-				
+
 				# Отправка токенов на iOS устройства
 				SendIOS($ios_tokens, $text, $config);
 			}
@@ -166,14 +166,14 @@
 			MessageToDB($text);
 		}
 	}
-	
-	###########################################################################
-	# ФУНКЦИЯ РАССЫЛКИ PUSH СООБЩЕНИЙ НА IOS УСТРОЙСТВА	
-	# 
-	# array $tokens - одномерный массив токенов устройст
-	# string $text - строка текста для рассылки
-	# array $config - массив параметров конфигурации: см. файл config.php
-	#
+
+    /**
+     * ФУНКЦИЯ РАССЫЛКИ PUSH СООБЩЕНИЙ НА IOS УСТРОЙСТВА
+     *
+     * @param array $tokens - одномерный массив токенов устройст
+     * @param string $text - строка текста для рассылки
+     * @param array $config - массив параметров конфигурации: см. файл config.php
+     */
 	function SendIOS($tokens, $text, $config)
 	{
 		
@@ -241,14 +241,14 @@
 			}
 		}
 	}
-	
-	###########################################################################
-	# ФУНКЦИЯ РАССЫЛКИ PUSH СООБЩЕНИЙ НА ANDROID УСТРОЙСТВА	
-	# 
-	# array $tokens - одномерный массив токенов устройст
-	# string $text - строка текста для рассылки
-	# array $config - массив параметров конфигурации: см. файл config.php
-	#
+
+    /**
+     * ФУНКЦИЯ РАССЫЛКИ PUSH СООБЩЕНИЙ НА ANDROID УСТРОЙСТВА
+     *
+     * @param array $tokens - одномерный массив токенов устройст
+     * @param string $text - строка текста для рассылки
+     * @param array $config - массив параметров конфигурации: см. файл config.php
+     */
 	function SendAndroid($tokens, $text, $config)
 	{
 		# Создаём поток для отправки с использование API ключа
@@ -287,74 +287,69 @@
 			}
 		}
 	}
-	
-	###########################################################################
-	# ФУНКЦИЯ УДАЛЕНИЯ НЕДЕЙСТВИТЕЛЬНОГО ТОКЕНА ИЗ БД
-	# 
-	# string $IndalidToken - токен недействительного устройства
-	#
+
+	/**
+	 * ФУНКЦИЯ УДАЛЕНИЯ НЕДЕЙСТВИТЕЛЬНОГО ТОКЕНА ИЗ БД
+	 * @param string $IndalidToken - токен недействительного устройства
+	 */
 	function DeleteToken($IndalidToken) {
 		
 		# Глобальные переменные
 		global $config;
 		
-		$db = mysql_connect($config['db']['host'], $config['db']['user'], $config['db']['pass']) or die("Ошибка подключения к БД!");
+		$db = mysqli_connect($config['db']['host'], $config['db']['user'], $config['db']['pass'], $config['db']['name']) or die("Ошибка подключения к БД!");
 
-		mysql_select_db($config['db']['name'], $db);
-		mysql_query("SET NAMES `utf8`");   
-		mysql_query("set character_set_client='utf8'");    
-		mysql_query("set character_set_results='utf8'");    
-		mysql_query("set collation_connection='utf8'"); 
+		mysqli_query($db, "SET NAMES `utf8`");   
+		mysqli_query($db, "set character_set_client='utf8'");    
+		mysqli_query($db, "set character_set_results='utf8'");    
+		mysqli_query($db, "set collation_connection='utf8'"); 
 		
 		# Удаление токена из БД
-		mysql_query("DELETE FROM devices WHERE deviceToken = '$IndalidToken'", $db);	
+		mysqli_query($db, "DELETE FROM devices WHERE deviceToken = '$IndalidToken'");	
 		
 	}
-	
-	###########################################################################
-	# ФУНКЦИЯ ЗАПИСИ PUSH СООБЩЕНИЯ В БД
-	# 
-	# string $message - текст push сообщения.
-	#
+
+	/**
+	 * ФУНКЦИЯ ЗАПИСИ PUSH СООБЩЕНИЯ В БД
+	 * @param string $message - текст push сообщения.
+	 */
 	function MessageToDB($message) {
 		
 		# Глобальные переменные
 		global $config;
 		
-		$tmp_db = mysql_connect($config['db']['host'], $config['db']['user'], $config['db']['pass']) or die("Ошибка подключения к БД!");
+		$tmp_db = mysqli_connect($config['db']['host'], $config['db']['user'], $config['db']['pass'], $config['db']['name']) or die("Ошибка подключения к БД!");
 
-		mysql_select_db($config['db']['name'], $tmp_db);
-		mysql_query("SET NAMES `utf8`");   
-		mysql_query("set character_set_client='utf8'");    
-		mysql_query("set character_set_results='utf8'");    
-		mysql_query("set collation_connection='utf8'"); 
+		mysqli_query($tmp_db, "SET NAMES `utf8`");   
+		mysqli_query($tmp_db, "set character_set_client='utf8'");    
+		mysqli_query($tmp_db, "set character_set_results='utf8'");    
+		mysqli_query($tmp_db, "set collation_connection='utf8'"); 
 				
 		# Записываем сообщение в БД
-		mysql_query("INSERT INTO messages (ID, DateTime, MessageText) VALUES (DEFAULT, NOW(), '$message')", $tmp_db);
+		mysqli_query($tmp_db, "INSERT INTO messages (ID, DateTime, MessageText) VALUES (DEFAULT, NOW(), '$message')");
 		
 	}
 
-	###########################################################################
-	# ФУНКЦИЯ ВЫВОДА ПОСЛЕДНИХ PUSH СООБЩЕНИЙ В ФОРМАТЕ XML
-	#
+	/**
+	 * ФУНКЦИЯ ВЫВОДА ПОСЛЕДНИХ PUSH СООБЩЕНИЙ В ФОРМАТЕ XML
+	 * @param $config - массив параметров конфигурации: см. файл config.php
+	 */
 	function get_push_to_xml($config) {
 		
 		# Создаём подключение к БД
-		$db = mysql_connect($config['db']['host'], $config['db']['user'], $config['db']['pass']) or die("Ошибка подключения к БД!");
+		$db = mysqli_connect($config['db']['host'], $config['db']['user'], $config['db']['pass'], $config['db']['name']) or die("Ошибка подключения к БД!");
 
-		mysql_select_db($config['db']['name'], $db);
-		mysql_query("SET NAMES `utf8`");   
-		mysql_query("set character_set_client='utf8'");    
-		mysql_query("set character_set_results='utf8'");    
-		mysql_query("set collation_connection='utf8'"); 
+		mysqli_query($db, "SET NAMES `utf8`");   
+		mysqli_query($db, "set character_set_client='utf8'");    
+		mysqli_query($db, "set character_set_results='utf8'");    
+		mysqli_query($db, "set collation_connection='utf8'"); 
 		
 		# Выполняем запрос к БД
-		$sql = mysql_query("
+		$sql = mysqli_query($db, "
 			SELECT ID, MessageText
 			FROM messages
 			ORDER BY DateTime DESC
-			LIMIT 3"
-		, $db);
+			LIMIT " . 3);
 		
 		# Создаём новый XML документ
 		$dom = new DOMDocument('1.0', 'utf-8');
@@ -363,7 +358,7 @@
 		$messages = $dom->createElement('messages');
 
 		# Перебираем список треков из БД
-		while ($row = mysql_fetch_assoc($sql)) {
+		while ($row = mysqli_fetch_assoc($sql)) {
 
 			# Создаём элемент message
 			$message = $dom->createElement('message');
