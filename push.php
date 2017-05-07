@@ -179,10 +179,11 @@
 		
 		# Создаём экземпляр Push. Необходимо указывать параметр ENVIRONMENT_PRODUCTION или 
 		# ENVIRONMENT_SANDBOX в соответствии с сертификатом.
+        # Если $config['apn']['production'] = 0, включен режим Production и используется сертификат sert_prod.
+        # Если $config['apn']['production'] = 1, включен режим Sandbox и используется сертификат sert_sand.
 		$push = new ApnsPHP_Push(
-			//ApnsPHP_Abstract::ENVIRONMENT_SANDBOX, $config['apn']['sert']);
-			($config['apn']['production'] ? 0 : 1), 
-			($config['apn']['production'] ? $config['apn']['sert_prod'] : $config['apn']['sert'])
+            $config['apn']['production'],
+			($config['apn']['production'] ? $config['apn']['sert_sand'] : $config['apn']['sert_prod'])
 		);
 		
 		# Указываем пароль сертификата если он имеется
@@ -191,7 +192,7 @@
 		}
 		
 		# Указываем корневой сертификат
-		$push->setRootCertificationAuthority($config['apn']['RootCertificat']);
+		$push->setRootCertificationAuthority($config['apn']['root_certificate']);
 		
 		# Создаём сообщение
 		$message = new ApnsPHP_Message();
@@ -228,9 +229,10 @@
 						foreach ($error['ERRORS'] as $m) {
 							if (isset($m['statusMessage']) && $m['statusMessage'] == 'Invalid token') {
 								$arrayID = $m['identifier'] - 1;
-								if (isset($listTokens[$arrayID])) {
-									# Если найден недействительный токен, удатяем его из БД
-									//echo 'Удаление ошибочного токена';
+								if (isset($listTokens[$arrayID]) and !($config['apn']['production'])) {
+									# Если найден недействительный токен и скирипт работает
+                                    # в Prodaction режиме, удаляем его из БД. Если включен режим
+                                    # Sandbox, то записи из БД не удаляются.
 									DeleteToken($listTokens[$arrayID]);
 								}
 							}

@@ -19,10 +19,10 @@ $config['gcm']['send'] = true;
 # Ключ для доступа Google Server API
 $config['gcm']['apikey'] = "ВАШ API КЛЮЧ";
 # Путь к сертификатам APN для подключения к серверу рассылки
-$config['apn']['sert'] = 'Certificates/server_certificates_bundle_sandbox.pem';
+$config['apn']['sert_sand'] = 'Certificates/server_certificates_bundle_sandbox.pem';
 $config['apn']['sert_prod'] = 'Certificates/server_certificates_bundle_prod.pem';
-$config['apn']['RootCertificat'] = 'Certificates/entrust_root_certification_authority_2048.pem';
+$config['apn']['root_certificate'] = 'Certificates/entrust_root_certification_authority_2048.pem';
 # Пароль сертификата, если пароля нет, то оставляем поле пустым. Настоятельно не рекомендуется использовать сертификаты без пароля.
 $config['apn']['sertPass'] = '';
-# 0-SanBox, 1-Production
+# Режим рассылки Push сообщений: 1-SanBox, 0-Production
 $config['apn']['production'] = 0;
