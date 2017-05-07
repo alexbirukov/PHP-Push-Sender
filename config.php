@@ -24,4 +24,5 @@ $config['apn']['sert_prod'] = 'Certificates/server_certificates_bundle_prod.pem'
 $config['apn']['RootCertificat'] = 'Certificates/entrust_root_certification_authority_2048.pem';
 # Пароль сертификата, если пароля нет, то оставляем поле пустым. Настоятельно не рекомендуется использовать сертификаты без пароля.
 $config['apn']['sertPass'] = '';
-$config['apn']['production'] = 0;///0-Production,1-SanBox
+# 0-SanBox, 1-Production
+$config['apn']['production'] = 0;
